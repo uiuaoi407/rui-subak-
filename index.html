@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>전가서의 수박 게임 챌린지!</title>
+    <title>전가서의 신과일 수박게임 챌린지!</title>
     
     <script>
         document.addEventListener('contextmenu', event => event.preventDefault());
@@ -67,12 +67,13 @@
     const bgm = document.getElementById("bgm");
 
     const fruitTypes = [
-        { level: 1, radius: 20, score: 2, img: 'subak1.jpg' },
-        { level: 2, radius: 28, score: 4, img: 'subak2.jpg' },
-        { level: 3, radius: 38, score: 8, img: 'subak3.jpg' },
-        { level: 4, radius: 50, score: 16, img: 'subak4.jpg' },
-        { level: 5, radius: 64, score: 32, img: 'subak5.jpg' },
-        { level: 6, radius: 80, score: 64, img: 'subak6.jpg' }
+        { level: 1, radius: 18, score: 2, img: 'subak1.jpg' },
+        { level: 2, radius: 25, score: 4, img: 'subak2.jpg' },
+        { level: 3, radius: 33, score: 8, img: 'subak3.jpg' },
+        { level: 4, radius: 42, score: 16, img: 'subak4.jpg' },
+        { level: 5, radius: 53, score: 32, img: 'subak5.jpg' },
+        { level: 6, radius: 66, score: 64, img: 'subak6.jpg' },
+        { level: 7, radius: 82, score: 128, img: 'subak7.jpg' }
     ];
 
     let score = 0;
@@ -83,7 +84,7 @@
     let gameInterval = null;
 
     function updateBackground() {
-        let bgIdx = Math.min(Math.floor(score / 1000) + 1, 5);
+        let bgIdx = (Math.floor(score / 1000) % 5) + 1;
         container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
     }
 
@@ -195,7 +196,7 @@
                             score += b1.scoreVal * 2;
                             scoreEl.innerText = score;
                             updateBackground();
-                            if (b1.level < 6) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
+                            if (b1.level < 7) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                         } else {
                             let overlap = minDist - dist;
                             let nx = dx / (dist || 1);
