@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>전가서의 신과일 수박게임 챌린지!</title>
+    <title>전가서의 수박 게임 챌린지!</title>
     
     <script>
         document.addEventListener('contextmenu', event => event.preventDefault());
@@ -134,10 +134,11 @@
         const type = fruitTypes[levelIdx];
         createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 3);
         
+        // 쿨타임을 0.8초로 늘려 연타를 방지하고 신중하게 배치하도록 유도합니다.
         setTimeout(() => {
             canDrop = true;
             currentDropLevel = Math.floor(Math.random() * 3);
-        }, 400);
+        }, 800);
     }
 
     function createBall(x, y, type, vx, vy) {
@@ -153,7 +154,7 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.8;      // 중력을 약 1.5배 높여서 시원하게 떨어지도록 설정
+        const gravity = 0.8;      
         const bounce = 0.03;      
         const friction = 0.85;    
         const width = container.clientWidth, height = container.clientHeight;
