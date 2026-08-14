@@ -131,7 +131,7 @@
     function dropBall(x, levelIdx) {
         canDrop = false;
         const type = fruitTypes[levelIdx];
-        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 2);
+        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 3);
         
         setTimeout(() => {
             canDrop = true;
@@ -152,12 +152,11 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.5;
-        const bounce = 0.03;      // 반발력을 극단적으로 낮춰서 고무공처럼 안 튀게 함 (탁 멈춤)
-        const friction = 0.85;    // 마찰력을 높여서 미끄러지거나 흔들리는 속도를 빠르게 감속
+        const gravity = 0.8;      // 중력을 약 1.5배 높여서 시원하게 떨어지도록 설정
+        const bounce = 0.03;      
+        const friction = 0.85;    
         const width = container.clientWidth, height = container.clientHeight;
 
-        // 1. 위치 및 속도 업데이트 (다중 반복문으로 위치 안정화 향상)
         for (let b of balls) {
             b.vy += gravity;
             b.vx *= friction;
@@ -165,15 +164,12 @@
             b.x += b.vx;
             b.y += b.vy;
 
-            // 속도가 아주 작으면 아예 0으로 고정 (미세한 떨림 방지)
             if (Math.abs(b.vx) < 0.05) b.vx = 0;
             if (Math.abs(b.vy) < 0.05) b.vy = 0;
 
-            // 벽 충돌
             if (b.x - b.radius < 0) { b.x = b.radius; b.vx = -b.vx * bounce; }
             if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = -b.vx * bounce; }
             
-            // 바닥 충돌
             if (b.y + b.radius > height) { 
                 b.y = height - b.radius; 
                 b.vy = -b.vy * bounce; 
@@ -181,9 +177,8 @@
             }
         }
 
-        // 2. 공끼리 충돌 및 위치 보정 (위치 겹침을 단단하게 즉시 해결)
         let merged = new Set();
-        for (let iteration = 0; iteration < 3; iteration++) { // 여러 번 반복해서 파고드는 현상 방지
+        for (let iteration = 0; iteration < 3; iteration++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -202,7 +197,6 @@
                             updateBackground();
                             if (b1.level < 6) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                         } else {
-                            // 단단한 물체처럼 겹친 만큼 서로 밀어내기 (반발력 거의 없이 착 붙음)
                             let overlap = minDist - dist;
                             let nx = dx / (dist || 1);
                             let ny = dy / (dist || 1);
@@ -216,7 +210,6 @@
                             b2.x += nx * overlap * r2;
                             b2.y += ny * overlap * r2;
 
-                            // 충돌 시 속도 교환 및 감쇠 (튀어오름 방지)
                             let dvx = b2.vx - b1.vx;
                             let dvy = b2.vy - b1.vy;
                             let velAlongNormal = dvx * nx + dvy * ny;
@@ -235,7 +228,6 @@
             }
         }
 
-        // 3. 제거 및 DOM 반영
         balls = balls.filter((b, idx) => {
             if (merged.has(idx)) { b.element.remove(); return false; }
             b.element.style.left = b.x + "px";
