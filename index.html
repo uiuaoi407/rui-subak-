@@ -82,6 +82,7 @@
     let currentDropLevel = 0;
     let canDrop = true;
     let gameInterval = null;
+    let gameOverTimer = 0;
 
     function updateBackground() {
         let bgIdx = (Math.floor(score / 1000) % 5) + 1;
@@ -109,11 +110,20 @@
         isGameRunning = true;
         balls.forEach(b => b.element.remove());
         balls = [];
-        currentDropLevel = Math.floor(Math.random() * 3);
+        currentDropLevel = getRandomDropLevel();
         canDrop = true;
+        gameOverTimer = 0;
 
         if (gameInterval) clearInterval(gameInterval);
         gameInterval = setInterval(updatePhysics, 1000 / 60);
+    }
+
+    // 중간 크기(레벨 2, 3)가 더 자주 나오도록 확률 가중치 조정
+    function getRandomDropLevel() {
+        const rand = Math.random();
+        if (rand < 0.35) return 0;       // 레벨 1 (35%)
+        else if (rand < 0.75) return 1;  // 레벨 2 (40% - 애매한 중간 크기)
+        else return 2;                   // 레벨 3 (25%)
     }
 
     container.addEventListener("click", (e) => {
@@ -134,10 +144,9 @@
         const type = fruitTypes[levelIdx];
         createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 3);
         
-        // 쿨타임을 0.8초로 늘려 연타를 방지하고 신중하게 배치하도록 유도합니다.
         setTimeout(() => {
             canDrop = true;
-            currentDropLevel = Math.floor(Math.random() * 3);
+            currentDropLevel = getRandomDropLevel();
         }, 800);
     }
 
@@ -159,6 +168,8 @@
         const friction = 0.85;    
         const width = container.clientWidth, height = container.clientHeight;
 
+        let isOverflowing = false;
+
         for (let b of balls) {
             b.vy += gravity;
             b.vx *= friction;
@@ -177,6 +188,26 @@
                 b.vy = -b.vy * bounce; 
                 if (Math.abs(b.vy) < 0.3) b.vy = 0;
             }
+
+            // 상단 라인(높이 35px 부근)에 공이 닿아 멈춰있으면 오버플로우 감지
+            if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.5) {
+                isOverflowing = true;
+            }
+        }
+
+        // 상단에 1.5초 이상 쌓여있으면 게임 오버 트리거 발동
+        if (isOverflowing) {
+            gameOverTimer++;
+            if (gameOverTimer > 90) {
+                isGameRunning = false;
+                clearInterval(gameInterval);
+                bgm.pause();
+                document.getElementById("final-score").innerText = `최종 점수 : ${score}점`;
+                document.getElementById("game-over").style.display = "flex";
+                return;
+            }
+        } else {
+            gameOverTimer = Math.max(0, gameOverTimer - 1);
         }
 
         let merged = new Set();
