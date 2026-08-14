@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>전가서의 수박게임 챌린지!</title>
+    <title>전가서의 신과일 수박게임 챌린지!</title>
     
     <script>
         document.addEventListener('contextmenu', event => event.preventDefault());
@@ -28,7 +28,7 @@
         .fruit-drop { 
             position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
             display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
-            transform: translate(-50%, -50%); transition: left 0.05s linear, top 0.05s linear;
+            transform: translate(-50%, -50%);
         }
 
         #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
@@ -152,47 +152,100 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.4, bounce = 0.2, friction = 0.98;
+        const gravity = 0.5;
+        const bounce = 0.03;      // 반발력을 극단적으로 낮춰서 고무공처럼 안 튀게 함 (탁 멈춤)
+        const friction = 0.85;    // 마찰력을 높여서 미끄러지거나 흔들리는 속도를 빠르게 감속
         const width = container.clientWidth, height = container.clientHeight;
 
+        // 1. 위치 및 속도 업데이트 (다중 반복문으로 위치 안정화 향상)
         for (let b of balls) {
-            b.vy += gravity; b.vx *= friction; b.x += b.vx; b.y += b.vy;
-            if (b.x - b.radius < 0) { b.x = b.radius; b.vx *= -bounce; }
-            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx *= -bounce; }
-            if (b.y + b.radius > height) { b.y = height - b.radius; b.vy *= -bounce; b.vx *= 0.8; }
+            b.vy += gravity;
+            b.vx *= friction;
+            b.vy *= friction;
+            b.x += b.vx;
+            b.y += b.vy;
+
+            // 속도가 아주 작으면 아예 0으로 고정 (미세한 떨림 방지)
+            if (Math.abs(b.vx) < 0.05) b.vx = 0;
+            if (Math.abs(b.vy) < 0.05) b.vy = 0;
+
+            // 벽 충돌
+            if (b.x - b.radius < 0) { b.x = b.radius; b.vx = -b.vx * bounce; }
+            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = -b.vx * bounce; }
+            
+            // 바닥 충돌
+            if (b.y + b.radius > height) { 
+                b.y = height - b.radius; 
+                b.vy = -b.vy * bounce; 
+                if (Math.abs(b.vy) < 0.3) b.vy = 0;
+            }
         }
 
+        // 2. 공끼리 충돌 및 위치 보정 (위치 겹침을 단단하게 즉시 해결)
         let merged = new Set();
-        for (let i = 0; i < balls.length; i++) {
-            for (let j = i + 1; j < balls.length; j++) {
-                if (merged.has(i) || merged.has(j)) continue;
-                let b1 = balls[i], b2 = balls[j];
-                let dist = Math.sqrt((b2.x - b1.x)**2 + (b2.y - b1.y)**2);
-                if (dist < b1.radius + b2.radius) {
-                    if (b1.level === b2.level) {
-                        merged.add(i); merged.add(j);
-                        score += b1.scoreVal * 2;
-                        scoreEl.innerText = score;
-                        updateBackground();
-                        if (b1.level < 6) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
-                    } else {
-                        let overlap = (b1.radius + b2.radius) - dist;
-                        let nx = (b2.x - b1.x) / dist, ny = (b2.y - b1.y) / dist;
-                        b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
-                        b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
+        for (let iteration = 0; iteration < 3; iteration++) { // 여러 번 반복해서 파고드는 현상 방지
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    if (merged.has(i) || merged.has(j)) continue;
+
+                    let b1 = balls[i], b2 = balls[j];
+                    let dx = b2.x - b1.x;
+                    let dy = b2.y - b1.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    let minDist = b1.radius + b2.radius;
+
+                    if (dist < minDist) {
+                        if (b1.level === b2.level) {
+                            merged.add(i); merged.add(j);
+                            score += b1.scoreVal * 2;
+                            scoreEl.innerText = score;
+                            updateBackground();
+                            if (b1.level < 6) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
+                        } else {
+                            // 단단한 물체처럼 겹친 만큼 서로 밀어내기 (반발력 거의 없이 착 붙음)
+                            let overlap = minDist - dist;
+                            let nx = dx / (dist || 1);
+                            let ny = dy / (dist || 1);
+
+                            let totalRadius = b1.radius + b2.radius;
+                            let r1 = b2.radius / totalRadius;
+                            let r2 = b1.radius / totalRadius;
+
+                            b1.x -= nx * overlap * r1;
+                            b1.y -= ny * overlap * r1;
+                            b2.x += nx * overlap * r2;
+                            b2.y += ny * overlap * r2;
+
+                            // 충돌 시 속도 교환 및 감쇠 (튀어오름 방지)
+                            let dvx = b2.vx - b1.vx;
+                            let dvy = b2.vy - b1.vy;
+                            let velAlongNormal = dvx * nx + dvy * ny;
+
+                            if (velAlongNormal < 0) {
+                                let impulse = -(1 + bounce) * velAlongNormal;
+                                impulse /= (1 / b1.radius + 1 / b2.radius);
+                                b1.vx -= (impulse / b1.radius) * nx * 0.2;
+                                b1.vy -= (impulse / b1.radius) * ny * 0.2;
+                                b2.vx += (impulse / b2.radius) * nx * 0.2;
+                                b2.vy += (impulse / b2.radius) * ny * 0.2;
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // 3. 제거 및 DOM 반영
         balls = balls.filter((b, idx) => {
             if (merged.has(idx)) { b.element.remove(); return false; }
-            b.element.style.left = b.x + "px"; b.element.style.top = b.y + "px";
+            b.element.style.left = b.x + "px";
+            b.element.style.top = b.y + "px";
             return true;
         });
     }
 
     function spawnMergedBall(x, y, level) {
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 4, -4);
+        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -2);
     }
 </script>
 </body>
