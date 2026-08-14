@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>전가서의 신과일 수박게임 챌린지!</title>
+    
+    <script>
+        /* ==========================================================
+         * Copyright © 2026 모카크림의밤산책. All rights reserved.
+         * Fan-made Archive Project - Protected Version
+         * ========================================================== */
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', event => {
+            if (event.key === 'F12' || (event.ctrlKey && event.shiftKey && event.key === 'I')) {
+                event.preventDefault();
+            }
+        });
+    </script>
+
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #000; color: white; text-align: center; margin: 0; overflow: hidden; touch-action: none; }
+        h1 { margin: 12px 0; font-size: 20px;}
+        
+        #game-container { 
+            position: relative; width: 90vw; max-width: 450px; height: 72vh; 
+            background-color: #000; margin: 10px auto; border: 3px solid #555; border-radius: 10px; overflow: hidden; 
+            touch-action: none;
+        }
+
+        .fruit-drop { 
+            position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
+            transform: translate(-50%, -50%);
+        }
+
+        #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
+        #watermark { position: absolute; bottom: 10px; right: 12px; color: rgba(255, 255, 255, 0.6); font-size: 12px; z-index: 6; pointer-events: none; }
+
+        .screen-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0, 0.8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; 
+        }
+        button { padding: 15px 40px; font-size: 20px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; }
+        .copyright-text { margin-top: 15px; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+    </style>
+</head>
+<body>
+    <h1>🍉 전가서 수박게임 챌린지 🍉</h1>
+    <div id="score-board">점수: <span id="score">0</span></div>
+
+    <audio id="bgm" src="수박배경음악.mp3" loop></audio>
+    <div id="game-container">
+        <div id="watermark">모카크림의 밤산책</div>
+        <div id="start-screen" class="screen-overlay">
+            <h2>수박 챌린지 시작</h2>
+            <button onclick="firstStartGame()">게임 시작!</button>
+            <div class="copyright-text">© 2026 모카크림의밤산책. All rights reserved. Fan-made project.</div>
+        </div>
+        <div id="game-over" class="screen-overlay" style="display: none;">
+            <h2>게임 오버 😵</h2>
+            <p id="final-score"></p>
+            <button onclick="restartGame()">다시 시작하기</button>
+        </div>
+    </div>
+
+<script>
+    const container = document.getElementById("game-container");
+    const scoreEl = document.getElementById("score");
+    const bgm = document.getElementById("bgm");
+
+    // 수박 단계별 설정 (1~6단계 이미지, 크기, 점수)
+    const fruitTypes = [
+        { level: 1, radius: 20, score: 2, img: 'subak1.jpg' },
+        { level: 2, radius: 28, score: 4, img: 'subak2.jpg' },
+        { level: 3, radius: 38, score: 8, img: 'subak3.jpg' },
+        { level: 4, radius: 50, score: 16, img: 'subak4.jpg' },
+        { level: 5, radius: 64, score: 32, img: 'subak5.jpg' },
+        { level: 6, radius: 80, score: 64, img: 'subak6.jpg' }
+    ];
+
+    let score = 0;
+    let isGameRunning = false;
+    let balls = [];
+    let currentDropLevel = 0;
+    let canDrop = true;
+    let gameInterval = null;
+
+    function playBgm() { bgm.pause(); bgm.currentTime = 0; bgm.play().catch(() => {}); }
+
+    function firstStartGame() { 
+        document.getElementById("start-screen").style.display = "none"; 
+        playBgm(); 
+        runGame(); 
+    }
+    
+    function restartGame() { 
+        document.getElementById("game-over").style.display = "none"; 
+        playBgm(); 
+        runGame(); 
+    }
+
+    function runGame() {
+        score = 0;
+        scoreEl.innerText = "0";
+        isGameRunning = true;
+        balls.forEach(b => b.element.remove());
+        balls = [];
+        currentDropLevel = Math.floor(Math.random() * 3); // 초반엔 낮은 단계 위주로 드랍 준비
+        canDrop = true;
+
+        if (gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(updatePhysics, 1000 / 60); // 60프레임 물리 엔진 루프
+    }
+
+    // 터치 및 마우스로 떨어뜨릴 위치 조절 후 클릭/터치 시 낙하
+    container.addEventListener("click", (e) => {
+        if (!isGameRunning || !canDrop) return;
+        const rect = container.getBoundingClientRect();
+        let x = e.clientX - rect.left;
+        dropBall(x, currentDropLevel);
+    });
+
+    container.addEventListener("touchend", (e) => {
+        if (!isGameRunning || !canDrop) return;
+        const rect = container.getBoundingClientRect();
+        let x = e.changedTouches[0].clientX - rect.left;
+        dropBall(x, currentDropLevel);
+        e.preventDefault();
+    }, {passive: false});
+
+    function dropBall(x, levelIdx) {
+        canDrop = false;
+        const type = fruitTypes[levelIdx];
+        x = Math.max(type.radius, Math.min(x, container.clientWidth - type.radius));
+
+        const el = document.createElement("div");
+        el.className = "fruit-drop";
+        el.style.width = (type.radius * 2) + "px";
+        el.style.height = (type.radius * 2) + "px";
+        el.style.backgroundImage = `url('${type.img}')`;
+        container.appendChild(el);
+
+        const ball = {
+            element: el,
+            x: x,
+            y: type.radius + 10,
+            vx: 0,
+            vy: 2, // 처음 떨어지는 속도
+            radius: type.radius,
+            level: type.level,
+            scoreVal: type.score
+        };
+
+        balls.push(ball);
+
+        setTimeout(() => {
+            canDrop = true;
+            currentDropLevel = Math.floor(Math.random() * 3); // 다음 떨어질 과일 랜덤 준비
+        }, 400);
+    }
+
+    // 간단한 중력 및 충돌 물리 연산
+    function updatePhysics() {
+        if (!isGameRunning) return;
+
+        const gravity = 0.4;
+        const bounce = 0.2;
+        const friction = 0.98;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        // 위치 및 속도 업데이트
+        for (let i = 0; i < balls.length; i++) {
+            let b = balls[i];
+            b.vy += gravity;
+            b.vx *= friction;
+            b.x += b.vx;
+            b.y += b.vy;
+
+            // 벽 충돌
+            if (b.x - b.radius < 0) { b.x = b.radius; b.vx *= -bounce; }
+            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx *= -bounce; }
+            
+            // 바닥 충돌
+            if (b.y + b.radius > height) {
+                b.y = height - b.radius;
+                b.vy *= -bounce;
+                b.vx *= 0.8;
+            }
+        }
+
+        // 공끼리 충돌 및 합치기(수박게임 핵심 로직)
+        let mergedIndices = new Set();
+        for (let i = 0; i < balls.length; i++) {
+            for (let j = i + 1; j < balls.length; j++) {
+                if (mergedIndices.has(i) || mergedIndices.has(j)) continue;
+
+                let b1 = balls[i];
+                let b2 = balls[j];
+
+                let dx = b2.x - b1.x;
+                let dy = b2.y - b1.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let minDist = b1.radius + b2.radius;
+
+                if (dist < minDist) {
+                    // 같은 레벨이면 합쳐짐!
+                    if (b1.level === b2.level) {
+                        mergedIndices.add(i);
+                        mergedIndices.add(j);
+
+                        score += b1.scoreVal * 2;
+                        scoreEl.innerText = score;
+
+                        let nextLevel = b1.level + 1;
+                        let newX = (b1.x + b2.x) / 2;
+                        let newY = (b1.y + b2.y) / 2;
+
+                        // 🍉 7단계 이상 도달 시 (6단계에서 합쳐지면 7단계가 되므로 터지면서 공간 확보!)
+                        if (nextLevel <= 6) {
+                            setTimeout(() => spawnMergedBall(newX, newY, nextLevel), 10);
+                        } else {
+                            // 7단계 도달 폭발 효과 (공간 확보)
+                            score += 500; // 보너스 점수
+                        }
+                    } else {
+                        // 일반적인 물리 반발
+                        let overlap = minDist - dist;
+                        let nx = dx / dist;
+                        let ny = dy / dist;
+
+                        let totalMass = b1.radius + b2.radius;
+                        b1.x -= nx * overlap * (b2.radius / totalMass);
+                        b1.y -= ny * overlap * (b2.radius / totalMass);
+                        b2.x += nx * overlap * (b1.radius / totalMass);
+                        b2.y += ny * overlap * (b1.radius / totalMass);
+                    }
+                }
+            }
+        }
+
+        // 합쳐진 과일 제거 및 DOM 업데이트
+        balls = balls.filter((b, idx) => {
+            if (mergedIndices.has(idx)) {
+                b.element.remove();
+                return false;
+            }
+            return true;
+        });
+
+        // 화면 위치 반영
+        balls.forEach(b => {
+            b.element.style.left = b.x + "px";
+            b.element.style.top = b.y + "px";
+        });
+
+        // 게임 오버 체크 (상단 선을 넘고 쌓인 채로 일정 시간 지나면)
+        for (let i = 0; i < balls.length; i++) {
+            if (balls[i].y - balls[i].radius < 30 && Math.abs(balls[i].vy) < 0.5) {
+                // 상단 초과 시 게임 오버
+                // endGame();
+            }
+        }
+    }
+
+    function spawnMergedBall(x, y, level) {
+        const type = fruitTypes[level - 1];
+        if (!type) return;
+
+        const el = document.createElement("div");
+        el.className = "fruit-drop";
+        el.style.width = (type.radius * 2) + "px";
+        el.style.height = (type.radius * 2) + "px";
+        el.style.backgroundImage = `url('${type.img}')`;
+        container.appendChild(el);
+
+        balls.push({
+            element: el,
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 4,
+            vy: -4, // 합쳐질 때 위로 살짝 튀어오름
+            radius: type.radius,
+            level: type.level,
+            scoreVal: type.score
+        });
+    }
+
+    function endGame() {
+        isGameRunning = false;
+        bgm.pause();
+        clearInterval(gameInterval);
+        document.getElementById("game-over").style.display = "flex";
+        document.getElementById("final-score").innerText = "최종 점수: " + score;
+    }
+</script>
+</body>
+</html>
