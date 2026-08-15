@@ -144,9 +144,9 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.6;      
-        const bounce = 0.3;       // 더 잘 튕기게
-        const friction = 0.98;    // 거의 마찰 없이 매끄럽게
+        const gravity = 0.6;
+        const bounce = 0.5;
+        const friction = 0.99;
         const width = container.clientWidth, height = container.clientHeight;
 
         let isOverflowing = false;
@@ -170,7 +170,7 @@
         } else gameOverTimer = Math.max(0, gameOverTimer - 1);
 
         let merged = new Set();
-        for (let iter = 0; iter < 5; iter++) { // 정밀도를 위해 루프 5회
+        for (let iter = 0; iter < 5; iter++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -187,16 +187,19 @@
                             updateBackground();
                             if (b1.level < 7) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                         } else {
-                            // 강제 분리 (하드한 충돌 처리)
                             let overlap = minDist - dist;
                             let nx = dx / dist; let ny = dy / dist;
                             b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
                             b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
                             
-                            // 속도 교환
-                            let tvx = b1.vx; let tvy = b1.vy;
-                            b1.vx = b2.vx * 0.5; b1.vy = b2.vy * 0.5;
-                            b2.vx = tvx * 0.5; b2.vy = tvy * 0.5;
+                            // 탄성 반사: 속도를 깎지 않고 방향만 반대로
+                            let dot = (b1.vx - b2.vx) * nx + (b1.vy - b2.vy) * ny;
+                            if (dot < 0) {
+                                b1.vx -= dot * nx;
+                                b1.vy -= dot * ny;
+                                b2.vx += dot * nx;
+                                b2.vy += dot * ny;
+                            }
                         }
                     }
                 }
