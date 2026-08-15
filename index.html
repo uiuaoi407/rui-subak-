@@ -144,29 +144,29 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.4;
+        const gravity = 0.35;
         const width = container.clientWidth, height = container.clientHeight;
 
         let isOverflowing = false;
 
-        // 1. 모든 공에 중력 적용 및 바닥/벽 제한
+        // 1. 위치 및 속도 업데이트 (마찰력 및 미끄러짐 구현)
         for (let b of balls) {
             b.vy += gravity;
             b.x += b.vx;
             b.y += b.vy;
 
-            // 속도 감쇠 (당구공처럼 굴러가다 멈춤)
-            b.vx *= 0.9;
-            b.vy *= 0.95;
+            // 공기 저항 및 바닥/벽 마찰 계수 조정
+            b.vx *= 0.98;
+            b.vy *= 0.99;
 
-            if (Math.abs(b.vx) < 0.05) b.vx = 0;
-            if (Math.abs(b.vy) < 0.05) b.vy = 0;
+            if (Math.abs(b.vx) < 0.01) b.vx = 0;
+            if (Math.abs(b.vy) < 0.01) b.vy = 0;
 
-            // 좌우 벽 처리
+            // 좌우 벽 충돌
             if (b.x - b.radius < 0) { b.x = b.radius; b.vx = 0; }
             if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = 0; }
 
-            // 바닥 처리
+            // 바닥 충돌
             if (b.y + b.radius > height) { 
                 b.y = height - b.radius; 
                 b.vy = 0; 
@@ -191,9 +191,10 @@
             gameOverTimer = Math.max(0, gameOverTimer - 1);
         }
 
-        // 2. 당구공 충돌 및 합치기 (반복 연산으로 겹침 완전 차단)
+        // 2. 비탄성 당구공 충돌 및 미끄러짐(틈새 파고들기) 연산
         let merged = new Set();
-        for (let iter = 0; iter < 5; iter++) {
+        
+        for (let iter = 0; iter < 8; iter++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -204,45 +205,51 @@
                     let minDist = b1.radius + b2.radius;
 
                     if (dist < minDist) {
-                        // 레벨이 같으면 합치기
+                        // 같은 레벨일 경우 합치기 조건 처리
                         if (b1.level === b2.level) {
                             merged.add(i); merged.add(j);
                             score += b1.scoreVal * 2;
                             scoreEl.innerText = score;
                             updateBackground();
+                            
+                            // 7단계(만렙) 공 두 개가 만나면 터지면서 소멸 (다음 단계로 생성 안 함)
                             if (b1.level < 7) {
                                 spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                             }
                         } else {
-                            // 당구공 물리: 절대 겹치지 않게 정확히 밀어내고, 위쪽 공의 충격이 아래쪽 공으로 전달되게 함
+                            // 비탄성 충돌: 겹침을 해소하고 미끄러지며 중력/사선 방향으로 흘러내리는 물리 적용
                             let overlap = minDist - dist;
                             let nx = dx / (dist || 1); 
                             let ny = dy / (dist || 1);
 
-                            // 무게(크기)에 비례해서 무거운 건 적게 밀리고 가벼운 건 잘 밀림
                             let m1 = b1.radius;
                             let m2 = b2.radius;
                             let totalM = m1 + m2;
 
+                            // 크기에 따른 위치 분배 (무거운 공은 덜 밀리고 가벼운 공은 잘 밀림)
                             b1.x -= nx * overlap * (m2 / totalM);
                             b1.y -= ny * overlap * (m2 / totalM);
                             b2.x += nx * overlap * (m1 / totalM);
                             b2.y += ny * overlap * (m1 / totalM);
 
-                            // 위에서 떨어지는 공의 충격이 아래 공으로 전달되도록 속도 교환
-                            let tempVx = b1.vx;
-                            let tempVy = b1.vy;
-                            b1.vx = b2.vx * 0.5;
-                            b1.vy = b2.vy * 0.5;
-                            b2.vx = tempVx * 0.5;
-                            b2.vy = tempVy * 0.5;
+                            // 미끄러짐 및 경사면 타고 흐르는 성질 부여 (탄성 최소화)
+                            let kx = b2.vx - b1.vx;
+                            let ky = b2.vy - b1.vy;
+                            let p = 2 * (nx * kx + ny * ky) / 2;
+
+                            if (p < 0) {
+                                b1.vx += p * nx * 0.2;
+                                b1.vy += p * ny * 0.2;
+                                b2.vx -= p * nx * 0.2;
+                                b2.vy -= p * ny * 0.2;
+                            }
                         }
                     }
                 }
             }
         }
 
-        // 3. 화면 반영
+        // 3. 화면 반영 및 삭제 처리
         balls = balls.filter((b, idx) => {
             if (merged.has(idx)) { 
                 b.element.remove(); 
@@ -250,12 +257,16 @@
             }
             b.element.style.left = b.x + "px"; 
             b.element.style.top = b.y + "px";
-            return true;
+            return typeValidation(b);
         });
     }
 
+    function typeValidation(b) {
+        return !isNaN(b.x) && !isNaN(b.y);
+    }
+
     function spawnMergedBall(x, y, level) { 
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -1); 
+        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 0.5, -2); 
     }
 </script>
 </body>
