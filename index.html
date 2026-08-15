@@ -67,13 +67,13 @@
     const bgm = document.getElementById("bgm");
 
     const fruitTypes = [
-        { level: 1, radius: 18, score: 2, mass: 1, img: 'subak1.jpg' },
-        { level: 2, radius: 25, score: 4, mass: 2, img: 'subak2.jpg' },
-        { level: 3, radius: 33, score: 8, mass: 3, img: 'subak3.jpg' },
-        { level: 4, radius: 42, score: 16, mass: 4, img: 'subak4.jpg' },
-        { level: 5, radius: 53, score: 32, mass: 5, img: 'subak5.jpg' },
-        { level: 6, radius: 66, score: 64, mass: 6, img: 'subak6.jpg' },
-        { level: 7, radius: 82, score: 128, mass: 7, img: 'subak7.jpg' }
+        { level: 1, radius: 18, score: 2, img: 'subak1.jpg' },
+        { level: 2, radius: 25, score: 4, img: 'subak2.jpg' },
+        { level: 3, radius: 33, score: 8, img: 'subak3.jpg' },
+        { level: 4, radius: 42, score: 16, img: 'subak4.jpg' },
+        { level: 5, radius: 53, score: 32, img: 'subak5.jpg' },
+        { level: 6, radius: 66, score: 64, img: 'subak6.jpg' },
+        { level: 7, radius: 82, score: 128, img: 'subak7.jpg' }
     ];
 
     let score = 0;
@@ -128,7 +128,7 @@
     function dropBall(x, levelIdx) {
         canDrop = false;
         const type = fruitTypes[levelIdx];
-        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 2);
+        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 5, type, 0, 0);
         setTimeout(() => { canDrop = true; currentDropLevel = getRandomDropLevel(); }, 800);
     }
 
@@ -139,52 +139,61 @@
         el.style.height = (type.radius * 2) + "px";
         el.style.backgroundImage = `url('${type.img}')`;
         container.appendChild(el);
-        balls.push({ 
-            element: el, x, y, vx, vy, 
-            radius: type.radius, level: type.level, 
-            scoreVal: type.score, mass: type.mass 
-        });
+        balls.push({ element: el, x, y, vx, vy, radius: type.radius, level: type.level, scoreVal: type.score });
     }
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.45;
-        const restitution = 0.15; // 바닥/벽 충돌 시 탄성 (낮을수록 덜 튀어오름)
+        const gravity = 0.4;
         const width = container.clientWidth, height = container.clientHeight;
 
         let isOverflowing = false;
 
-        // 1. 위치 이동 및 벽 충돌
+        // 1. 모든 공에 중력 적용 및 바닥/벽 제한
         for (let b of balls) {
             b.vy += gravity;
             b.x += b.vx;
             b.y += b.vy;
 
-            // 좌우 벽 충돌
-            if (b.x - b.radius < 0) { 
-                b.x = b.radius; 
-                b.vx = -b.vx * restitution; 
-            } else if (b.x + b.radius > width) { 
-                b.x = width - b.radius; 
-                b.vx = -b.vx * restitution; 
-            }
+            // 속도 감쇠 (당구공처럼 굴러가다 멈춤)
+            b.vx *= 0.9;
+            b.vy *= 0.95;
 
-            // 바닥 충돌
+            if (Math.abs(b.vx) < 0.05) b.vx = 0;
+            if (Math.abs(b.vy) < 0.05) b.vy = 0;
+
+            // 좌우 벽 처리
+            if (b.x - b.radius < 0) { b.x = b.radius; b.vx = 0; }
+            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = 0; }
+
+            // 바닥 처리
             if (b.y + b.radius > height) { 
                 b.y = height - b.radius; 
-                b.vy = -b.vy * restitution; 
-                b.vx *= 0.85; // 바닥 마찰
-                if (Math.abs(b.vy) < 0.3) b.vy = 0;
+                b.vy = 0; 
             }
 
-            if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.3 && Math.abs(b.vx) < 0.3) {
+            if (b.y - b.radius < 35 && b.vy === 0 && Math.abs(b.vx) < 0.1) {
                 isOverflowing = true;
             }
         }
 
-        // 2. 공끼리의 완벽한 단단한 원 충돌 (Overlap 해소 및 운동량 보존)
+        if (isOverflowing) {
+            gameOverTimer++;
+            if (gameOverTimer > 90) { 
+                isGameRunning = false; 
+                clearInterval(gameInterval); 
+                bgm.pause(); 
+                document.getElementById("final-score").innerText = `최종 점수 : ${score}점`; 
+                document.getElementById("game-over").style.display = "flex"; 
+                return; 
+            }
+        } else {
+            gameOverTimer = Math.max(0, gameOverTimer - 1);
+        }
+
+        // 2. 당구공 충돌 및 합치기 (반복 연산으로 겹침 완전 차단)
         let merged = new Set();
-        for (let iter = 0; iter < 4; iter++) {
+        for (let iter = 0; iter < 5; iter++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -205,53 +214,35 @@
                                 spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                             }
                         } else {
-                            // 단단한 공 충돌: 겹침을 확실하게 밀어내어 파고들지 못하게 함
+                            // 당구공 물리: 절대 겹치지 않게 정확히 밀어내고, 위쪽 공의 충격이 아래쪽 공으로 전달되게 함
                             let overlap = minDist - dist;
                             let nx = dx / (dist || 1); 
                             let ny = dy / (dist || 1);
 
-                            // 질량에 비례하여 위치 배분 (무거운 건 덜 밀리고 가벼운 건 잘 밀림)
-                            let totalMass = b1.mass + b2.mass;
-                            let ratio1 = b2.mass / totalMass;
-                            let ratio2 = b1.mass / totalMass;
+                            // 무게(크기)에 비례해서 무거운 건 적게 밀리고 가벼운 건 잘 밀림
+                            let m1 = b1.radius;
+                            let m2 = b2.radius;
+                            let totalM = m1 + m2;
 
-                            b1.x -= nx * overlap * ratio1; 
-                            b1.y -= ny * overlap * ratio1;
-                            b2.x += nx * overlap * ratio2; 
-                            b2.y += ny * overlap * ratio2;
+                            b1.x -= nx * overlap * (m2 / totalM);
+                            b1.y -= ny * overlap * (m2 / totalM);
+                            b2.x += nx * overlap * (m1 / totalM);
+                            b2.y += ny * overlap * (m1 / totalM);
 
-                            // 속도 교환 (탄성 충돌 + 약간의 감쇠로 덜 튀게 제어)
-                            let kx = b1.vx - b2.vx;
-                            let ky = b1.vy - b2.vy;
-                            let p = 2 * (nx * kx + ny * ky) / totalMass;
-                            
-                            if (p < 0) {
-                                b1.vx -= p * b2.mass * nx * 0.4;
-                                b1.vy -= p * b2.mass * ny * 0.4;
-                                b2.vx += p * b1.mass * nx * 0.4;
-                                b2.vy += p * b1.mass * ny * 0.4;
-                            }
+                            // 위에서 떨어지는 공의 충격이 아래 공으로 전달되도록 속도 교환
+                            let tempVx = b1.vx;
+                            let tempVy = b1.vy;
+                            b1.vx = b2.vx * 0.5;
+                            b1.vy = b2.vy * 0.5;
+                            b2.vx = tempVx * 0.5;
+                            b2.vy = tempVy * 0.5;
                         }
                     }
                 }
             }
         }
 
-        if (isOverflowing) {
-            gameOverTimer++;
-            if (gameOverTimer > 90) { 
-                isGameRunning = false; 
-                clearInterval(gameInterval); 
-                bgm.pause(); 
-                document.getElementById("final-score").innerText = `최종 점수 : ${score}점`; 
-                document.getElementById("game-over").style.display = "flex"; 
-                return; 
-            }
-        } else {
-            gameOverTimer = Math.max(0, gameOverTimer - 1);
-        }
-
-        // 3. 화면 갱신
+        // 3. 화면 반영
         balls = balls.filter((b, idx) => {
             if (merged.has(idx)) { 
                 b.element.remove(); 
@@ -264,7 +255,7 @@
     }
 
     function spawnMergedBall(x, y, level) { 
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -2); 
+        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -1); 
     }
 </script>
 </body>
