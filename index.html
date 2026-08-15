@@ -19,7 +19,7 @@
         h1 { margin: 12px 0; font-size: 20px;}
         
         #game-container { 
-            position: relative; width: 90vw; max-width: 450px; height: 72vh; 
+            position: relative; width: 85vw; max-width: 390px; height: 72vh; 
             background-color: #000; background-size: cover; background-position: center;
             margin: 10px auto; border: 3px solid #555; border-radius: 10px; overflow: hidden; 
             touch-action: none; transition: background-image 0.5s ease;
@@ -118,11 +118,10 @@
         gameInterval = setInterval(updatePhysics, 1000 / 60);
     }
 
-    // 중간 크기(레벨 2, 3)가 더 자주 나오도록 확률 가중치 조정
     function getRandomDropLevel() {
         const rand = Math.random();
         if (rand < 0.35) return 0;       // 레벨 1 (35%)
-        else if (rand < 0.75) return 1;  // 레벨 2 (40% - 애매한 중간 크기)
+        else if (rand < 0.75) return 1;  // 레벨 2 (40%)
         else return 2;                   // 레벨 3 (25%)
     }
 
@@ -189,13 +188,11 @@
                 if (Math.abs(b.vy) < 0.3) b.vy = 0;
             }
 
-            // 상단 라인(높이 35px 부근)에 공이 닿아 멈춰있으면 오버플로우 감지
             if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.5) {
                 isOverflowing = true;
             }
         }
 
-        // 상단에 1.5초 이상 쌓여있으면 게임 오버 트리거 발동
         if (isOverflowing) {
             gameOverTimer++;
             if (gameOverTimer > 90) {
