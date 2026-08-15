@@ -163,8 +163,8 @@
     function updatePhysics() {
         if (!isGameRunning) return;
         const gravity = 0.8;      
-        const bounce = 0.03;      
-        const friction = 0.85;    
+        const bounce = 0.01;      // 탄성 대폭 낮춤 (거의 안 튀김)
+        const friction = 0.75;    // 마찰력 대폭 강화 (미끄러짐 억제)
         const width = container.clientWidth, height = container.clientHeight;
 
         let isOverflowing = false;
@@ -208,7 +208,8 @@
         }
 
         let merged = new Set();
-        for (let iteration = 0; iteration < 3; iteration++) {
+        // 반복 횟수를 줄여서 파고드는 연산의 유연성을 강제로 틀어막음
+        for (let iteration = 0; iteration < 1; iteration++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -235,8 +236,8 @@
                             let r1 = b2.radius / totalRadius;
                             let r2 = b1.radius / totalRadius;
 
-                            // 과도한 미끄러짐(무한 파고들기) 방지를 위한 압력 저항 계수 적용
-                            let pressureFactor = (overlap > 4) ? 0.4 : 0.8;
+                            // 틈새로 파고드는 미끄러짐을 완전히 틀어막기 위해 저항 계수를 극단적으로 낮춤
+                            let pressureFactor = (overlap > 2) ? 0.05 : 0.2;
 
                             b1.x -= nx * overlap * r1 * pressureFactor;
                             b1.y -= ny * overlap * r1 * pressureFactor;
@@ -250,10 +251,10 @@
                             if (velAlongNormal < 0) {
                                 let impulse = -(1 + bounce) * velAlongNormal;
                                 impulse /= (1 / b1.radius + 1 / b2.radius);
-                                b1.vx -= (impulse / b1.radius) * nx * 0.2;
-                                b1.vy -= (impulse / b1.radius) * ny * 0.2;
-                                b2.vx += (impulse / b2.radius) * nx * 0.2;
-                                b2.vy += (impulse / b2.radius) * ny * 0.2;
+                                b1.vx -= (impulse / b1.radius) * nx * 0.05;
+                                b1.vy -= (impulse / b1.radius) * ny * 0.05;
+                                b2.vx += (impulse / b2.radius) * nx * 0.05;
+                                b2.vy += (impulse / b2.radius) * ny * 0.05;
                             }
                         }
                     }
@@ -270,7 +271,7 @@
     }
 
     function spawnMergedBall(x, y, level) {
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -2);
+        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 0.5, -1);
     }
 </script>
 </body>
