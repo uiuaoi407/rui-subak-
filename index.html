@@ -80,7 +80,7 @@
     </div>
 
     <audio id="bgm" src="수박배경음악.mp3" loop></audio>
-    <audio id="event-sound" src="이벤트효과음.mp3"></audio> <!-- 7단계 합체 시 재생될 효과음 (파일명 맞게 변경 가능) -->
+    <audio id="event-sound" src="이벤트효과음.mp3"></audio>
 
     <div id="game-container">
         <div id="watermark">모카크림의 밤산책</div>
@@ -98,7 +98,7 @@
     </div>
 
 <script>
-    const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
+    const { Engine, Runner, Bodies, Composite, Events } = Matter;
 
     const container = document.getElementById("game-container");
     const scoreEl = document.getElementById("score");
@@ -127,8 +127,8 @@
     let canDrop = true;
     let gameOverTimer = 0;
     
-    // 이벤트 짤 관련 변수
-    let eventIndex = 1; // 1, 2, 3 순환
+    // 이벤트 짤 관련 변수 (1 -> 2 -> 3 순환)
+    let eventIndex = 1;
     let isEventActive = false;
     let eventTimer = null;
 
@@ -136,8 +136,7 @@
     let ballMap = new Map();
 
     function updateBackground() {
-        // 이벤트 짤이 떠 있는 동안에는 배경 이미지 강제 유지 중이므로 일반 점수 배경은 이벤트가 끝날 때 적용됩니다.
-        if (isEventActive) return;
+        if (isEventActive) return; // 이벤트 짤 재생 중엔 일반 배경 변경 차단
         let bgIdx = (Math.floor(score / 1000) % 5) + 1;
         container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
     }
@@ -152,16 +151,16 @@
             Engine.clear(engine);
         }
 
+        // 공중 멈춤 버그를 막기 위해 enableSleeping 제거
         engine = Engine.create({
             gravity: { x: 0, y: 1.5 },
-            enableSleeping: true,
             positionIterations: 10,
             velocityIterations: 10
         });
 
         const width = container.clientWidth;
         const height = container.clientHeight;
-        const wallOptions = { isStatic: true, restitution: 0, friction: 0.2 };
+        const wallOptions = { isStatic: true, restitution: 0, friction: 0.1 };
 
         const ground = Bodies.rectangle(width / 2, height + 30, width * 2, 60, wallOptions);
         const leftWall = Bodies.rectangle(-30, height / 2, 60, height * 2, wallOptions);
@@ -194,14 +193,13 @@
                     score += fruitTypes[level - 1].score * 2;
                     scoreEl.innerText = score;
 
-                    // 최고 점수 실시간 갱신 체크
                     if (score > bestScore) {
                         bestScore = score;
                         bestScoreEl.innerText = bestScore;
                         localStorage.setItem('subak_best_score', bestScore);
                     }
 
-                    // ⭐ 7단계 공이 합쳐졌을 때 이벤트 발생!
+                    // 7단계 합체 시 이벤트 발동
                     if (level === 7) {
                         triggerEventCutscene();
                     } else {
@@ -257,31 +255,26 @@
         });
     }
 
-    // ⭐ 이벤트 짤 연출 함수 (5초간 유지, 순환, 테두리 반짝임 및 효과음)
+    // 7단계 이벤트 연출 함수 (5초간 유지, 순환, 테두리 반짝임, 효과음)
     function triggerEventCutscene() {
         isEventActive = true;
         
-        // 1. 테두리 반짝임 클래스 추가
         container.classList.add("flash-effect");
 
-        // 2. 효과음 재생
         eventSound.currentTime = 0;
         eventSound.play().catch(() => {});
 
-        // 3. 현재 순번에 맞는 이벤트 배경 짤 적용 (event1.jpg, event2.jpg, event3.jpg 순환)
         container.style.backgroundImage = `url('event${eventIndex}.jpg')`;
 
-        // 다음을 위해 인덱스 1 -> 2 -> 3 -> 1 무한 순환 세팅
+        // 1 -> 2 -> 3 순환
         eventIndex = (eventIndex % 3) + 1;
 
-        // 기존에 실행 중이던 타이머가 있다면 초기화
         if (eventTimer) clearTimeout(eventTimer);
 
-        // 4. 정확히 5초 후에 원래 상태로 복귀 (게임은 계속 플레이 가능 상태 유지됨)
         eventTimer = setTimeout(() => {
             isEventActive = false;
             container.classList.remove("flash-effect");
-            updateBackground(); // 점수대에 맞는 일반 배경으로 복구
+            updateBackground();
         }, 5000);
     }
 
@@ -333,12 +326,10 @@
     function dropBall(x) {
         canDrop = false;
         
-        // 이번에 떨어질 과일은 현재 대기 중인 과일
         const type = fruitTypes[currentDropLevel];
         const clampX = Math.max(type.radius, Math.min(x, container.clientWidth - type.radius));
         createBall(clampX, type.radius + 5, type);
 
-        // 다음 과일을 현재 과일로 땡기고, 새로운 다음 과일 선정 후 UI 업데이트
         currentDropLevel = nextDropLevel;
         nextDropLevel = getRandomDropLevel();
         updateNextFruitUI();
@@ -348,9 +339,9 @@
 
     function createBall(x, y, type) {
         const body = Bodies.circle(x, y, type.radius, {
-            restitution: 0.02, 
-            friction: 0.1,      
-            frictionAir: 0.001,
+            restitution: 0.001, 
+            friction: 0.05,     
+            frictionAir: 0,     
             slop: 0,             
             density: 0.005
         });
