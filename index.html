@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>전가서의 수박 게임 챌린지!</title>
     
-    <!-- Matter.js 물리 엔진 라이브러리 추가 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
     <script>
@@ -28,10 +27,14 @@
             touch-action: none; transition: background-image 0.5s ease;
         }
 
+        /* border가 크기에 영향을 주지 않도록 테두리를 안쪽으로 고정 */
         .fruit-drop { 
-            position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
+            position: absolute; border-radius: 50%; 
+            border: 2px solid white; 
+            box-sizing: border-box; /* 핵심: 테두리가 물리학 반지름을 침범하지 않게 설정 */
+            background-size: cover; background-position: center; 
             display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
-            transform: translate(-50%, -50%); box-sizing: border-box; pointer-events: none;
+            transform: translate(-50%, -50%); pointer-events: none;
         }
 
         #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
@@ -65,7 +68,7 @@
     </div>
 
 <script>
-    const { Engine, Render, Runner, Bodies, Composite, Body, Events, Vector } = Matter;
+    const { Engine, Render, Runner, Bodies, Composite, Events } = Matter;
 
     const container = document.getElementById("game-container");
     const scoreEl = document.getElementById("score");
@@ -88,7 +91,7 @@
     let gameOverTimer = 0;
     
     let engine, runner;
-    let ballMap = new Map(); // Matter Body와 DOM Element 연결
+    let ballMap = new Map();
 
     function updateBackground() {
         let bgIdx = (Math.floor(score / 1000) % 5) + 1;
@@ -105,15 +108,18 @@
             Engine.clear(engine);
         }
 
+        // 1. 떨림 방지(enableSleeping) 및 연산 정밀도 높이기
         engine = Engine.create({
-            gravity: { x: 0, y: 1.5 } // 시원하게 떨어지도록 중력 보정
+            gravity: { x: 0, y: 1.5 },
+            enableSleeping: true,          // 움직임이 정지된 공은 잠재워 떨림 현상 완전 제거
+            positionIterations: 10,        // 위치 연산 수치 높여 겹침 방지
+            velocityIterations: 10         // 속도 연산 수치 높이기
         });
 
         const width = container.clientWidth;
         const height = container.clientHeight;
-        const wallOptions = { isStatic: true, restitution: 0, friction: 0.1 };
+        const wallOptions = { isStatic: true, restitution: 0, friction: 0.2 };
 
-        // 벽과 바닥 생성 (벽 두께 60px로 두껍게 세워 통과 차단)
         const ground = Bodies.rectangle(width / 2, height + 30, width * 2, 60, wallOptions);
         const leftWall = Bodies.rectangle(-30, height / 2, 60, height * 2, wallOptions);
         const rightWall = Bodies.rectangle(width + 30, height / 2, 60, height * 2, wallOptions);
@@ -123,7 +129,6 @@
         runner = Runner.create();
         Runner.run(runner, engine);
 
-        // 충돌 이벤트 처리 (합치기)
         Events.on(engine, 'collisionStart', (event) => {
             if (!isGameRunning) return;
             const pairs = event.pairs;
@@ -140,7 +145,6 @@
                     const midX = (bodyA.position.x + bodyB.position.x) / 2;
                     const midY = (bodyA.position.y + bodyB.position.y) / 2;
 
-                    // 화면 요소 및 물리 객체 제거
                     removeBall(bodyA);
                     removeBall(bodyB);
 
@@ -148,7 +152,6 @@
                     scoreEl.innerText = score;
                     updateBackground();
 
-                    // 7단계 두 개 만나면 터지고 끝, 그 이하는 다음 단계 생성
                     if (level < 7) {
                         setTimeout(() => {
                             createBall(midX, midY, fruitTypes[level]);
@@ -158,7 +161,6 @@
             }
         });
 
-        // 프레임 이동 및 게임오버 체크
         Events.on(engine, 'afterUpdate', () => {
             if (!isGameRunning) return;
 
@@ -171,7 +173,6 @@
                     el.style.left = body.position.x + "px";
                     el.style.top = body.position.y + "px";
 
-                    // 게임오버 감지 (상단 선 기준 멈춰있는지)
                     if (body.position.y - body.circleRadius < 35 && Math.abs(body.velocity.y) < 0.2) {
                         isOverflowing = true;
                     }
@@ -197,7 +198,6 @@
         scoreEl.innerText = "0";
         updateBackground();
         
-        // 기존 렌더링 노드 싹 정리
         document.querySelectorAll('.fruit-drop').forEach(el => el.remove());
         ballMap.clear();
 
@@ -235,17 +235,17 @@
     }
 
     function createBall(x, y, type) {
-        // 물리 객체 (단단한 당구공 성질)
+        // 2. slop: 0 옵션으로 허용 겹침을 없애고 마찰력을 알맞게 조율
         const body = Bodies.circle(x, y, type.radius, {
-            restitution: 0.05, // 튀지 않음
-            friction: 0.02,    // 표면 마찰 적게 -> 또르르 잘 굴러감
-            frictionAir: 0.001,// 공기 저항 최소화
+            restitution: 0.02, 
+            friction: 0.1,      
+            frictionAir: 0.001,
+            slop: 0,             // 겹침 여유분을 0으로 강제
             density: 0.005
         });
 
         body.customLevel = type.level;
 
-        // DOM 표시 객체
         const el = document.createElement("div");
         el.className = "fruit-drop";
         el.style.width = (type.radius * 2) + "px";
