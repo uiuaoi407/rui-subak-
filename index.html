@@ -28,7 +28,7 @@
         .fruit-drop { 
             position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
             display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%); box-sizing: border-box;
         }
 
         #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
@@ -149,24 +149,21 @@
 
         let isOverflowing = false;
 
-        // 1. 공 중력 및 위치 업데이트
+        // 1. 공 위치 및 엄격한 벽/바닥 제한 (반지름 기준 완벽 차단)
         for (let b of balls) {
             b.vy += gravity;
             b.x += b.vx;
             b.y += b.vy;
 
-            // 마찰력 적용
             b.vx *= 0.95;
             b.vy *= 0.98;
 
             if (Math.abs(b.vx) < 0.02) b.vx = 0;
             if (Math.abs(b.vy) < 0.02) b.vy = 0;
 
-            // 좌우 벽 처리
             if (b.x - b.radius < 0) { b.x = b.radius; b.vx = 0; }
             if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = 0; }
 
-            // 바닥 처리
             if (b.y + b.radius > height) { 
                 b.y = height - b.radius; 
                 b.vy = 0; 
@@ -192,10 +189,10 @@
             gameOverTimer = Math.max(0, gameOverTimer - 1);
         }
 
-        // 2. 당구공 충돌 로직: 아래 공은 고정, 위에서 떨어지는 공만 미끄러지게 처리
+        // 2. 공과 공 사이의 겹침 완벽 차단 (반복 연산 횟수를 15회로 대폭 상향하여 밀어내기 강제 적용)
         let merged = new Set();
         
-        for (let iter = 0; iter < 5; iter++) {
+        for (let iter = 0; iter < 15; iter++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -206,7 +203,6 @@
                     let minDist = b1.radius + b2.radius;
 
                     if (dist < minDist) {
-                        // 같은 레벨이면 합치기
                         if (b1.level === b2.level) {
                             merged.add(i); merged.add(j);
                             score += b1.scoreVal * 2;
@@ -217,7 +213,6 @@
                                 spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
                             }
                         } else {
-                            // 높낮이 판정: Y 좌표가 더 아래(숫자가 큰 쪽)에 있는 공을 '아래 공(고정)'으로 취급
                             let lowerB, upperB;
                             if (b1.y >= b2.y) {
                                 lowerB = b1; upperB = b2;
@@ -226,15 +221,18 @@
                             }
 
                             let overlap = minDist - dist;
-                            let nx = dx / (dist || 1); 
-                            let ny = dy / (dist || 1);
+                            // 거리가 0일 때(완전히 중심이 겹칠 때)를 대비한 예외 처리 포함
+                            let nx = dx / (dist || 0.0001); 
+                            let ny = dy / (dist || 0.0001);
 
-                            // 아래 공은 절대 위로 밀려나지 않게 고정하고, 
-                            // 위에서 떨어지는 공(upperB)만 바깥쪽/경사면 쪽으로 완전히 밀어냄 + 속도 감쇠
+                            // 아래 공은 고정, 위 공만 확실하게 밖으로 밀어내기
                             upperB.x += nx * overlap * (upperB === b1 ? -1 : 1);
                             upperB.y += ny * overlap * (upperB === b1 ? -1 : 1);
 
-                            // 위에서 내려온 공이 아래 공을 치고 위로 튀어 오르는 현상을 막기 위해 상향 속도를 0으로 죽이고 측면으로 미끄러지게 함
+                            // 밀려난 공이 벽 밖으로 튀어나가지 않도록 즉시 제한
+                            upperB.x = Math.max(upperB.radius, Math.min(upperB.x, width - upperB.radius));
+                            upperB.y = Math.min(upperB.y, height - upperB.radius);
+
                             if (upperB.vy > 0) upperB.vy = 0;
                             upperB.vx *= 0.5;
                         }
@@ -256,7 +254,8 @@
     }
 
     function spawnMergedBall(x, y, level) { 
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 0.5, -1); 
+        const type = fruitTypes[level - 1];
+        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), y, type, (Math.random() - 0.5) * 0.5, -1); 
     }
 </script>
 </body>
