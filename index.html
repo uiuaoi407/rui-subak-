@@ -144,9 +144,9 @@
 
     function updatePhysics() {
         if (!isGameRunning) return;
-        const gravity = 0.6;
-        const bounce = 0.5;
-        const friction = 0.99;
+        const gravity = 0.55;  // 중력을 자연스럽게
+        const bounce = 0.4;    // 벽 바닥 튕김
+        const friction = 0.995;// 공기 저항을 거의 없애서 속도 유지
         const width = container.clientWidth, height = container.clientHeight;
 
         let isOverflowing = false;
@@ -160,7 +160,12 @@
 
             if (b.x - b.radius < 0) { b.x = b.radius; b.vx = -b.vx * bounce; }
             if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = -b.vx * bounce; }
-            if (b.y + b.radius > height) { b.y = height - b.radius; b.vy = -b.vy * bounce; }
+            if (b.y + b.radius > height) { 
+                b.y = height - b.radius; 
+                b.vy = -b.vy * bounce; 
+                // 바닥에 부딪힐 때 속도가 너무 작으면 아예 0으로 끊어줘서 미끄러지는 슬로우모션 방지
+                if (Math.abs(b.vy) < 0.8) b.vy = 0;
+            }
             if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.5) isOverflowing = true;
         }
 
@@ -169,8 +174,9 @@
             if (gameOverTimer > 90) { isGameRunning = false; clearInterval(gameInterval); bgm.pause(); document.getElementById("final-score").innerText = `최종 점수 : ${score}점`; document.getElementById("game-over").style.display = "flex"; return; }
         } else gameOverTimer = Math.max(0, gameOverTimer - 1);
 
+        // 충돌 및 합치기 (반응 속도 개선을 위해 반복 횟수를 2회로 줄여 렉과 밀림 현상 방지)
         let merged = new Set();
-        for (let iter = 0; iter < 5; iter++) {
+        for (let iter = 0; iter < 2; iter++) {
             for (let i = 0; i < balls.length; i++) {
                 for (let j = i + 1; j < balls.length; j++) {
                     if (merged.has(i) || merged.has(j)) continue;
@@ -189,22 +195,27 @@
                         } else {
                             let overlap = minDist - dist;
                             let nx = dx / dist; let ny = dy / dist;
+                            
+                            // 겹침 해제 (한 번에 깔끔하게 밀어내기)
                             b1.x -= nx * overlap * 0.5; b1.y -= ny * overlap * 0.5;
                             b2.x += nx * overlap * 0.5; b2.y += ny * overlap * 0.5;
                             
-                            // 탄성 반사: 속도를 깎지 않고 방향만 반대로
-                            let dot = (b1.vx - b2.vx) * nx + (b1.vy - b2.vy) * ny;
-                            if (dot < 0) {
-                                b1.vx -= dot * nx;
-                                b1.vy -= dot * ny;
-                                b2.vx += dot * nx;
-                                b2.vy += dot * ny;
+                            // 충돌 시 속도 반사 (스르륵 미끄러지지 않고 즉시 탁 튕기도록)
+                            let kx = b1.vx - b2.vx;
+                            let ky = b1.vy - b2.vy;
+                            let p = 2 * (nx * kx + ny * ky) / 2;
+                            if (p < 0) {
+                                b1.vx -= p * nx * 0.8;
+                                b1.vy -= p * ny * 0.8;
+                                b2.vx += p * nx * 0.8;
+                                b2.vy += p * ny * 0.8;
                             }
                         }
                     }
                 }
             }
         }
+
         balls = balls.filter((b, idx) => {
             if (merged.has(idx)) { b.element.remove(); return false; }
             b.element.style.left = b.x + "px"; b.element.style.top = b.y + "px";
