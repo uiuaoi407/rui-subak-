@@ -235,10 +235,13 @@
                             let r1 = b2.radius / totalRadius;
                             let r2 = b1.radius / totalRadius;
 
-                            b1.x -= nx * overlap * r1;
-                            b1.y -= ny * overlap * r1;
-                            b2.x += nx * overlap * r2;
-                            b2.y += ny * overlap * r2;
+                            // 과도한 미끄러짐(무한 파고들기) 방지를 위한 압력 저항 계수 적용
+                            let pressureFactor = (overlap > 4) ? 0.4 : 0.8;
+
+                            b1.x -= nx * overlap * r1 * pressureFactor;
+                            b1.y -= ny * overlap * r1 * pressureFactor;
+                            b2.x += nx * overlap * r2 * pressureFactor;
+                            b2.y += ny * overlap * r2 * pressureFactor;
 
                             let dvx = b2.vx - b1.vx;
                             let dvy = b2.vy - b1.vy;
