@@ -20,17 +20,10 @@
         body { font-family: 'Arial', sans-serif; background-color: #000; color: white; text-align: center; margin: 0; overflow: hidden; touch-action: none; }
         h1 { margin: 8px 0; font-size: 18px;}
         
-        /* 상단 정보 패널 (점수 & 다음 과일 미리보기) */
+        /* 상단 정보 패널 (점수만 남김) */
         #top-info-panel {
-            display: flex; justify-content: center; align-items: center; gap: 20px;
+            display: flex; justify-content: center; align-items: center;
             margin-bottom: 6px; font-size: 15px; font-weight: bold; z-index: 2; position: relative;
-        }
-        .next-box {
-            display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1);
-            padding: 3px 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.3);
-        }
-        #next-fruit-img {
-            width: 22px; height: 22px; border-radius: 50%; border: 1px solid white; background-size: cover; background-position: center;
         }
         
         #game-container { 
@@ -73,10 +66,6 @@
     
     <div id="top-info-panel">
         <div>점수: <span id="score">0</span> | 최고: <span id="best-score">0</span></div>
-        <div class="next-box">
-            <span>다음:</span>
-            <div id="next-fruit-img"></div>
-        </div>
     </div>
 
     <audio id="bgm" src="수박배경음악.mp3" loop></audio>
@@ -103,7 +92,6 @@
     const container = document.getElementById("game-container");
     const scoreEl = document.getElementById("score");
     const bestScoreEl = document.getElementById("best-score");
-    const nextFruitImgEl = document.getElementById("next-fruit-img");
     const bgm = document.getElementById("bgm");
     const eventSound = document.getElementById("event-sound");
 
@@ -123,7 +111,6 @@
 
     let isGameRunning = false;
     let currentDropLevel = 0;
-    let nextDropLevel = 0;
     let canDrop = true;
     let gameOverTimer = 0;
     
@@ -136,7 +123,7 @@
     let ballMap = new Map();
 
     function updateBackground() {
-        if (isEventActive) return; // 이벤트 짤 재생 중엔 일반 배경 변경 차단
+        if (isEventActive) return;
         let bgIdx = (Math.floor(score / 1000) % 5) + 1;
         container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
     }
@@ -151,7 +138,6 @@
             Engine.clear(engine);
         }
 
-        // 공중 멈춤 버그를 막기 위해 enableSleeping 제거
         engine = Engine.create({
             gravity: { x: 0, y: 1.5 },
             positionIterations: 10,
@@ -199,7 +185,6 @@
                         localStorage.setItem('subak_best_score', bestScore);
                     }
 
-                    // 7단계 합체 시 이벤트 발동
                     if (level === 7) {
                         triggerEventCutscene();
                     } else {
@@ -255,7 +240,6 @@
         });
     }
 
-    // 7단계 이벤트 연출 함수 (5초간 유지, 순환, 테두리 반짝임, 효과음)
     function triggerEventCutscene() {
         isEventActive = true;
         
@@ -266,7 +250,6 @@
 
         container.style.backgroundImage = `url('event${eventIndex}.jpg')`;
 
-        // 1 -> 2 -> 3 순환
         eventIndex = (eventIndex % 3) + 1;
 
         if (eventTimer) clearTimeout(eventTimer);
@@ -293,9 +276,8 @@
         initPhysics();
         isGameRunning = true;
         
+        // 미리보기 없이 랜덤으로 바로 뽑아서 진행
         currentDropLevel = getRandomDropLevel();
-        nextDropLevel = getRandomDropLevel();
-        updateNextFruitUI();
 
         canDrop = true;
         gameOverTimer = 0;
@@ -304,10 +286,6 @@
     function getRandomDropLevel() {
         const rand = Math.random();
         if (rand < 0.35) return 0; else if (rand < 0.75) return 1; else return 2;
-    }
-
-    function updateNextFruitUI() {
-        nextFruitImgEl.style.backgroundImage = `url('${fruitTypes[nextDropLevel].img}')`;
     }
 
     container.addEventListener("click", (e) => {
@@ -330,9 +308,8 @@
         const clampX = Math.max(type.radius, Math.min(x, container.clientWidth - type.radius));
         createBall(clampX, type.radius + 5, type);
 
-        currentDropLevel = nextDropLevel;
-        nextDropLevel = getRandomDropLevel();
-        updateNextFruitUI();
+        // 던진 직후 다음 공을 바로 랜덤으로 새로 결정
+        currentDropLevel = getRandomDropLevel();
 
         setTimeout(() => { canDrop = true; }, 800);
     }
