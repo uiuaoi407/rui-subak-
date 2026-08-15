@@ -1,278 +1,277 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>전가서의 수박 게임 챌린지!</title>
-    
-    <script>
-        document.addEventListener('contextmenu', event => event.preventDefault());
-        document.addEventListener('keydown', event => {
-            if (event.key === 'F12' || (event.ctrlKey && event.shiftKey && event.key === 'I')) {
-                event.preventDefault();
-            }
-        });
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>전가서의 수박 게임 챌린지!</title>
+    
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('keydown', event => {
+            if (event.key === 'F12' || (event.ctrlKey && event.shiftKey && event.key === 'I')) {
+                event.preventDefault();
+            }
+        });
+    </script>
 
-    <style>
-        body { font-family: 'Arial', sans-serif; background-color: #000; color: white; text-align: center; margin: 0; overflow: hidden; touch-action: none; }
-        h1 { margin: 12px 0; font-size: 20px;}
-        
-        #game-container { 
-            position: relative; width: 85vw; max-width: 390px; height: 72vh; 
-            background-color: #000; background-size: cover; background-position: center;
-            margin: 10px auto; border: 3px solid #555; border-radius: 10px; overflow: hidden; 
-            touch-action: none; transition: background-image 0.5s ease;
-        }
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #000; color: white; text-align: center; margin: 0; overflow: hidden; touch-action: none; }
+        h1 { margin: 12px 0; font-size: 20px;}
+        
+        #game-container { 
+            position: relative; width: 85vw; max-width: 390px; height: 72vh; 
+            background-color: #000; background-size: cover; background-position: center;
+            margin: 10px auto; border: 3px solid #555; border-radius: 10px; overflow: hidden; 
+            touch-action: none; transition: background-image 0.5s ease;
+        }
 
-        .fruit-drop { 
-            position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
-            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
-            transform: translate(-50%, -50%);
-        }
+        .fruit-drop { 
+            position: absolute; border-radius: 50%; border: 2px solid white; background-size: cover; background-position: center; 
+            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; color: black;
+            transform: translate(-50%, -50%);
+        }
 
-        #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
-        #watermark { position: absolute; bottom: 10px; right: 12px; color: rgba(255, 255, 255, 0.6); font-size: 12px; z-index: 6; pointer-events: none; }
+        #score-board { font-size: 16px; font-weight: bold; margin-bottom: 12px; z-index: 2; position: relative; }
+        #watermark { position: absolute; bottom: 10px; right: 12px; color: rgba(255, 255, 255, 0.6); font-size: 12px; z-index: 6; pointer-events: none; }
 
-        .screen-overlay { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0, 0.8);
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; 
-        }
-        button { padding: 15px 40px; font-size: 20px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; }
-        .copyright-text { margin-top: 15px; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
-    </style>
+        .screen-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0, 0.8);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 30; 
+        }
+        button { padding: 15px 40px; font-size: 20px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; }
+        .copyright-text { margin-top: 15px; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+    </style>
 </head>
 <body>
-    <h1>🍉 전가서 수박게임 챌린지 🍉</h1>
-    <div id="score-board">점수: <span id="score">0</span></div>
+    <h1>🍉 전가서 수박게임 챌린지 🍉</h1>
+    <div id="score-board">점수: <span id="score">0</span></div>
 
-    <audio id="bgm" src="수박배경음악.mp3" loop></audio>
-    <div id="game-container">
-        <div id="watermark">모카크림의 밤산책</div>
-        <div id="start-screen" class="screen-overlay">
-            <h2>수박 챌린지 시작</h2>
-            <button onclick="firstStartGame()">게임 시작!</button>
-            <div class="copyright-text">© 2026 모카크림의밤산책. Fan-made project.</div>
-        </div>
-        <div id="game-over" class="screen-overlay" style="display: none;">
-            <h2>게임 오버 😵</h2>
-            <p id="final-score"></p>
-            <button onclick="restartGame()">다시 시작하기</button>
-        </div>
-    </div>
+    <audio id="bgm" src="수박배경음악.mp3" loop></audio>
+    <div id="game-container">
+        <div id="watermark">모카크림의 밤산책</div>
+        <div id="start-screen" class="screen-overlay">
+            <h2>수박 챌린지 시작</h2>
+            <button onclick="firstStartGame()">게임 시작!</button>
+            <div class="copyright-text">© 2026 모카크림의밤산책. Fan-made project.</div>
+        </div>
+        <div id="game-over" class="screen-overlay" style="display: none;">
+            <h2>게임 오버 😵</h2>
+            <p id="final-score"></p>
+            <button onclick="restartGame()">다시 시작하기</button>
+        </div>
+    </div>
 
 <script>
-    const container = document.getElementById("game-container");
-    const scoreEl = document.getElementById("score");
-    const bgm = document.getElementById("bgm");
+    const container = document.getElementById("game-container");
+    const scoreEl = document.getElementById("score");
+    const bgm = document.getElementById("bgm");
 
-    const fruitTypes = [
-        { level: 1, radius: 18, score: 2, img: 'subak1.jpg' },
-        { level: 2, radius: 25, score: 4, img: 'subak2.jpg' },
-        { level: 3, radius: 33, score: 8, img: 'subak3.jpg' },
-        { level: 4, radius: 42, score: 16, img: 'subak4.jpg' },
-        { level: 5, radius: 53, score: 32, img: 'subak5.jpg' },
-        { level: 6, radius: 66, score: 64, img: 'subak6.jpg' },
-        { level: 7, radius: 82, score: 128, img: 'subak7.jpg' }
-    ];
+    const fruitTypes = [
+        { level: 1, radius: 18, score: 2, img: 'subak1.jpg' },
+        { level: 2, radius: 25, score: 4, img: 'subak2.jpg' },
+        { level: 3, radius: 33, score: 8, img: 'subak3.jpg' },
+        { level: 4, radius: 42, score: 16, img: 'subak4.jpg' },
+        { level: 5, radius: 53, score: 32, img: 'subak5.jpg' },
+        { level: 6, radius: 66, score: 64, img: 'subak6.jpg' },
+        { level: 7, radius: 82, score: 128, img: 'subak7.jpg' }
+    ];
 
-    let score = 0;
-    let isGameRunning = false;
-    let balls = [];
-    let currentDropLevel = 0;
-    let canDrop = true;
-    let gameInterval = null;
-    let gameOverTimer = 0;
+    let score = 0;
+    let isGameRunning = false;
+    let balls = [];
+    let currentDropLevel = 0;
+    let canDrop = true;
+    let gameInterval = null;
+    let gameOverTimer = 0;
 
-    function updateBackground() {
-        let bgIdx = (Math.floor(score / 1000) % 5) + 1;
-        container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
-    }
+    function updateBackground() {
+        let bgIdx = (Math.floor(score / 1000) % 5) + 1;
+        container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
+    }
 
-    function playBgm() { bgm.pause(); bgm.currentTime = 0; bgm.play().catch(() => {}); }
+    function playBgm() { bgm.pause(); bgm.currentTime = 0; bgm.play().catch(() => {}); }
 
-    function firstStartGame() { 
-        document.getElementById("start-screen").style.display = "none"; 
-        playBgm(); 
-        runGame(); 
-    }
-    
-    function restartGame() { 
-        document.getElementById("game-over").style.display = "none"; 
-        playBgm(); 
-        runGame(); 
-    }
+    function firstStartGame() { 
+        document.getElementById("start-screen").style.display = "none"; 
+        playBgm(); 
+        runGame(); 
+    }
+    
+    function restartGame() { 
+        document.getElementById("game-over").style.display = "none"; 
+        playBgm(); 
+        runGame(); 
+    }
 
-    function runGame() {
-        score = 0;
-        scoreEl.innerText = "0";
-        updateBackground();
-        isGameRunning = true;
-        balls.forEach(b => b.element.remove());
-        balls = [];
-        currentDropLevel = getRandomDropLevel();
-        canDrop = true;
-        gameOverTimer = 0;
+    function runGame() {
+        score = 0;
+        scoreEl.innerText = "0";
+        updateBackground();
+        isGameRunning = true;
+        balls.forEach(b => b.element.remove());
+        balls = [];
+        currentDropLevel = getRandomDropLevel();
+        canDrop = true;
+        gameOverTimer = 0;
 
-        if (gameInterval) clearInterval(gameInterval);
-        gameInterval = setInterval(updatePhysics, 1000 / 60);
-    }
+        if (gameInterval) clearInterval(gameInterval);
+        gameInterval = setInterval(updatePhysics, 1000 / 60);
+    }
 
-    function getRandomDropLevel() {
-        const rand = Math.random();
-        if (rand < 0.35) return 0;       // 레벨 1 (35%)
-        else if (rand < 0.75) return 1;  // 레벨 2 (40%)
-        else return 2;                   // 레벨 3 (25%)
-    }
+    function getRandomDropLevel() {
+        const rand = Math.random();
+        if (rand < 0.35) return 0;       // 레벨 1 (35%)
+        else if (rand < 0.75) return 1;  // 레벨 2 (40%)
+        else return 2;                   // 레벨 3 (25%)
+    }
 
-    container.addEventListener("click", (e) => {
-        if (!isGameRunning || !canDrop) return;
-        const rect = container.getBoundingClientRect();
-        dropBall(e.clientX - rect.left, currentDropLevel);
-    });
+    container.addEventListener("click", (e) => {
+        if (!isGameRunning || !canDrop) return;
+        const rect = container.getBoundingClientRect();
+        dropBall(e.clientX - rect.left, currentDropLevel);
+    });
 
-    container.addEventListener("touchend", (e) => {
-        if (!isGameRunning || !canDrop) return;
-        const rect = container.getBoundingClientRect();
-        dropBall(e.changedTouches[0].clientX - rect.left, currentDropLevel);
-        e.preventDefault();
-    }, {passive: false});
+    container.addEventListener("touchend", (e) => {
+        if (!isGameRunning || !canDrop) return;
+        const rect = container.getBoundingClientRect();
+        dropBall(e.changedTouches[0].clientX - rect.left, currentDropLevel);
+        e.preventDefault();
+    }, {passive: false});
 
-    function dropBall(x, levelIdx) {
-        canDrop = false;
-        const type = fruitTypes[levelIdx];
-        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 3);
-        
-        setTimeout(() => {
-            canDrop = true;
-            currentDropLevel = getRandomDropLevel();
-        }, 800);
-    }
+    function dropBall(x, levelIdx) {
+        canDrop = false;
+        const type = fruitTypes[levelIdx];
+        createBall(Math.max(type.radius, Math.min(x, container.clientWidth - type.radius)), type.radius + 10, type, 0, 3);
+        
+        setTimeout(() => {
+            canDrop = true;
+            currentDropLevel = getRandomDropLevel();
+        }, 800);
+    }
 
-    function createBall(x, y, type, vx, vy) {
-        const el = document.createElement("div");
-        el.className = "fruit-drop";
-        el.style.width = (type.radius * 2) + "px";
-        el.style.height = (type.radius * 2) + "px";
-        el.style.backgroundImage = `url('${type.img}')`;
-        container.appendChild(el);
+    function createBall(x, y, type, vx, vy) {
+        const el = document.createElement("div");
+        el.className = "fruit-drop";
+        el.style.width = (type.radius * 2) + "px";
+        el.style.height = (type.radius * 2) + "px";
+        el.style.backgroundImage = `url('${type.img}')`;
+        container.appendChild(el);
 
-        balls.push({ element: el, x, y, vx, vy, radius: type.radius, level: type.level, scoreVal: type.score });
-    }
+        balls.push({ element: el, x, y, vx, vy, radius: type.radius, level: type.level, scoreVal: type.score });
+    }
 
-    function updatePhysics() {
-        if (!isGameRunning) return;
-        const gravity = 0.8;      
-        const bounce = 0.01;      // 탄성 대폭 낮춤 (거의 안 튀김)
-        const friction = 0.75;    // 마찰력 대폭 강화 (미끄러짐 억제)
-        const width = container.clientWidth, height = container.clientHeight;
+    function updatePhysics() {
+        if (!isGameRunning) return;
+        const gravity = 0.8;      
+        const bounce = 0.03;      
+        const friction = 0.85;    
+        const width = container.clientWidth, height = container.clientHeight;
 
-        let isOverflowing = false;
+        let isOverflowing = false;
 
-        for (let b of balls) {
-            b.vy += gravity;
-            b.vx *= friction;
-            b.vy *= friction;
-            b.x += b.vx;
-            b.y += b.vy;
+        for (let b of balls) {
+            b.vy += gravity;
+            b.vx *= friction;
+            b.vy *= friction;
+            b.x += b.vx;
+            b.y += b.vy;
 
-            if (Math.abs(b.vx) < 0.05) b.vx = 0;
-            if (Math.abs(b.vy) < 0.05) b.vy = 0;
+            if (Math.abs(b.vx) < 0.05) b.vx = 0;
+            if (Math.abs(b.vy) < 0.05) b.vy = 0;
 
-            if (b.x - b.radius < 0) { b.x = b.radius; b.vx = -b.vx * bounce; }
-            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = -b.vx * bounce; }
-            
-            if (b.y + b.radius > height) { 
-                b.y = height - b.radius; 
-                b.vy = -b.vy * bounce; 
-                if (Math.abs(b.vy) < 0.3) b.vy = 0;
-            }
+            if (b.x - b.radius < 0) { b.x = b.radius; b.vx = -b.vx * bounce; }
+            if (b.x + b.radius > width) { b.x = width - b.radius; b.vx = -b.vx * bounce; }
+            
+            if (b.y + b.radius > height) { 
+                b.y = height - b.radius; 
+                b.vy = -b.vy * bounce; 
+                if (Math.abs(b.vy) < 0.3) b.vy = 0;
+            }
 
-            if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.5) {
-                isOverflowing = true;
-            }
-        }
+            if (b.y - b.radius < 35 && Math.abs(b.vy) < 0.5) {
+                isOverflowing = true;
+            }
+        }
 
-        if (isOverflowing) {
-            gameOverTimer++;
-            if (gameOverTimer > 90) {
-                isGameRunning = false;
-                clearInterval(gameInterval);
-                bgm.pause();
-                document.getElementById("final-score").innerText = `최종 점수 : ${score}점`;
-                document.getElementById("game-over").style.display = "flex";
-                return;
-            }
-        } else {
-            gameOverTimer = Math.max(0, gameOverTimer - 1);
-        }
+        if (isOverflowing) {
+            gameOverTimer++;
+            if (gameOverTimer > 90) {
+                isGameRunning = false;
+                clearInterval(gameInterval);
+                bgm.pause();
+                document.getElementById("final-score").innerText = `최종 점수 : ${score}점`;
+                document.getElementById("game-over").style.display = "flex";
+                return;
+            }
+        } else {
+            gameOverTimer = Math.max(0, gameOverTimer - 1);
+        }
 
-        let merged = new Set();
-        // 반복 횟수를 줄여서 파고드는 연산의 유연성을 강제로 틀어막음
-        for (let iteration = 0; iteration < 1; iteration++) {
-            for (let i = 0; i < balls.length; i++) {
-                for (let j = i + 1; j < balls.length; j++) {
-                    if (merged.has(i) || merged.has(j)) continue;
+        let merged = new Set();
+        for (let iteration = 0; iteration < 3; iteration++) {
+            for (let i = 0; i < balls.length; i++) {
+                for (let j = i + 1; j < balls.length; j++) {
+                    if (merged.has(i) || merged.has(j)) continue;
 
-                    let b1 = balls[i], b2 = balls[j];
-                    let dx = b2.x - b1.x;
-                    let dy = b2.y - b1.y;
-                    let dist = Math.sqrt(dx * dx + dy * dy);
-                    let minDist = b1.radius + b2.radius;
+                    let b1 = balls[i], b2 = balls[j];
+                    let dx = b2.x - b1.x;
+                    let dy = b2.y - b1.y;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    let minDist = b1.radius + b2.radius;
 
-                    if (dist < minDist) {
-                        if (b1.level === b2.level) {
-                            merged.add(i); merged.add(j);
-                            score += b1.scoreVal * 2;
-                            scoreEl.innerText = score;
-                            updateBackground();
-                            if (b1.level < 7) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
-                        } else {
-                            let overlap = minDist - dist;
-                            let nx = dx / (dist || 1);
-                            let ny = dy / (dist || 1);
+                    if (dist < minDist) {
+                        if (b1.level === b2.level) {
+                            merged.add(i); merged.add(j);
+                            score += b1.scoreVal * 2;
+                            scoreEl.innerText = score;
+                            updateBackground();
+                            if (b1.level < 7) spawnMergedBall((b1.x + b2.x) / 2, (b1.y + b2.y) / 2, b1.level + 1);
+                        } else {
+                            let overlap = minDist - dist;
+                            let nx = dx / (dist || 1);
+                            let ny = dy / (dist || 1);
 
-                            let totalRadius = b1.radius + b2.radius;
-                            let r1 = b2.radius / totalRadius;
-                            let r2 = b1.radius / totalRadius;
+                            let totalRadius = b1.radius + b2.radius;
+                            let r1 = b2.radius / totalRadius;
+                            let r2 = b1.radius / totalRadius;
 
-                            // 틈새로 파고드는 미끄러짐을 완전히 틀어막기 위해 저항 계수를 극단적으로 낮춤
-                            let pressureFactor = (overlap > 2) ? 0.05 : 0.2;
+                            // 과도한 미끄러짐(무한 파고들기) 방지를 위한 압력 저항 계수 적용
+                            let pressureFactor = (overlap > 4) ? 0.4 : 0.8;
 
-                            b1.x -= nx * overlap * r1 * pressureFactor;
-                            b1.y -= ny * overlap * r1 * pressureFactor;
-                            b2.x += nx * overlap * r2 * pressureFactor;
-                            b2.y += ny * overlap * r2 * pressureFactor;
+                            b1.x -= nx * overlap * r1 * pressureFactor;
+                            b1.y -= ny * overlap * r1 * pressureFactor;
+                            b2.x += nx * overlap * r2 * pressureFactor;
+                            b2.y += ny * overlap * r2 * pressureFactor;
 
-                            let dvx = b2.vx - b1.vx;
-                            let dvy = b2.vy - b1.vy;
-                            let velAlongNormal = dvx * nx + dvy * ny;
+                            let dvx = b2.vx - b1.vx;
+                            let dvy = b2.vy - b1.vy;
+                            let velAlongNormal = dvx * nx + dvy * ny;
 
-                            if (velAlongNormal < 0) {
-                                let impulse = -(1 + bounce) * velAlongNormal;
-                                impulse /= (1 / b1.radius + 1 / b2.radius);
-                                b1.vx -= (impulse / b1.radius) * nx * 0.05;
-                                b1.vy -= (impulse / b1.radius) * ny * 0.05;
-                                b2.vx += (impulse / b2.radius) * nx * 0.05;
-                                b2.vy += (impulse / b2.radius) * ny * 0.05;
-                            }
-                        }
-                    }
-                }
-            }
-        }
+                            if (velAlongNormal < 0) {
+                                let impulse = -(1 + bounce) * velAlongNormal;
+                                impulse /= (1 / b1.radius + 1 / b2.radius);
+                                b1.vx -= (impulse / b1.radius) * nx * 0.2;
+                                b1.vy -= (impulse / b1.radius) * ny * 0.2;
+                                b2.vx += (impulse / b2.radius) * nx * 0.2;
+                                b2.vy += (impulse / b2.radius) * ny * 0.2;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-        balls = balls.filter((b, idx) => {
-            if (merged.has(idx)) { b.element.remove(); return false; }
-            b.element.style.left = b.x + "px";
-            b.element.style.top = b.y + "px";
-            return true;
-        });
-    }
+        balls = balls.filter((b, idx) => {
+            if (merged.has(idx)) { b.element.remove(); return false; }
+            b.element.style.left = b.x + "px";
+            b.element.style.top = b.y + "px";
+            return true;
+        });
+    }
 
-    function spawnMergedBall(x, y, level) {
-        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 0.5, -1);
-    }
+    function spawnMergedBall(x, y, level) {
+        createBall(x, y, fruitTypes[level - 1], (Math.random() - 0.5) * 1, -2);
+    }
 </script>
 </body>
 </html>
