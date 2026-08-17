@@ -8,6 +8,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 
     <script>
+        /* ==========================================================
+         * Copyright © 2026 모카크림의밤산책. All rights reserved.
+         * Fan-made Archive Project - Protected Version
+         * ========================================================== */
         document.addEventListener('contextmenu', event => event.preventDefault());
         document.addEventListener('keydown', event => {
             if (event.key === 'F12' || (event.ctrlKey && event.shiftKey && event.key === 'I')) {
@@ -20,7 +24,6 @@
         body { font-family: 'Arial', sans-serif; background-color: #000; color: white; text-align: center; margin: 0; overflow: hidden; touch-action: none; }
         h1 { margin: 8px 0; font-size: 18px;}
         
-        /* 상단 정보 패널 (점수만 남김) */
         #top-info-panel {
             display: flex; justify-content: center; align-items: center;
             margin-bottom: 6px; font-size: 15px; font-weight: bold; z-index: 2; position: relative;
@@ -33,7 +36,6 @@
             touch-action: none; transition: background-image 0.5s ease;
         }
 
-        /* 7단계 합체 시 화면 테두리 반짝이는 효과 클래스 */
         #game-container.flash-effect {
             animation: flashBorder 0.5s ease infinite alternate;
         }
@@ -59,6 +61,14 @@
         }
         button { padding: 12px 35px; font-size: 18px; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 10px; font-weight: bold; }
         .copyright-text { margin-top: 15px; font-size: 11px; color: rgba(255, 255, 255, 0.6); }
+        
+        /* 시작 화면 하단 전 세계 플레이 횟수 스타일 */
+        #global-plays {
+            margin-top: 12px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.75);
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -76,6 +86,8 @@
         <div id="start-screen" class="screen-overlay">
             <h2>수박 챌린지 시작</h2>
             <button onclick="firstStartGame()">게임 시작!</button>
+            <!-- 시작 화면에만 살짝 보이는 전 세계 총 플레이 횟수 영역 -->
+            <div id="global-plays">전 세계 총 플레이: <span id="play-count-num">불러오는 중...</span>회</div>
             <div class="copyright-text">© 2026 모카크림의밤산책. Fan-made project.</div>
         </div>
         <div id="game-over" class="screen-overlay" style="display: none;">
@@ -86,263 +98,7 @@
         </div>
     </div>
 
-<script>
-    const { Engine, Runner, Bodies, Composite, Events } = Matter;
-
-    const container = document.getElementById("game-container");
-    const scoreEl = document.getElementById("score");
-    const bestScoreEl = document.getElementById("best-score");
-    const bgm = document.getElementById("bgm");
-    const eventSound = document.getElementById("event-sound");
-
-    const fruitTypes = [
-        { level: 1, radius: 18, score: 2, img: 'subak1.jpg' },
-        { level: 2, radius: 25, score: 4, img: 'subak2.jpg' },
-        { level: 3, radius: 33, score: 8, img: 'subak3.jpg' },
-        { level: 4, radius: 42, score: 16, img: 'subak4.jpg' },
-        { level: 5, radius: 53, score: 32, img: 'subak5.jpg' },
-        { level: 6, radius: 66, score: 64, img: 'subak6.jpg' },
-        { level: 7, radius: 82, score: 128, img: 'subak7.jpg' }
-    ];
-
-    let score = 0;
-    let bestScore = localStorage.getItem('subak_best_score') || 0;
-    bestScoreEl.innerText = bestScore;
-
-    let isGameRunning = false;
-    let currentDropLevel = 0;
-    let canDrop = true;
-    let gameOverTimer = 0;
-    
-    // 이벤트 짤 관련 변수 (1 -> 2 -> 3 순환)
-    let eventIndex = 1;
-    let isEventActive = false;
-    let eventTimer = null;
-
-    let engine, runner;
-    let ballMap = new Map();
-
-    function updateBackground() {
-        if (isEventActive) return;
-        let bgIdx = (Math.floor(score / 1000) % 5) + 1;
-        container.style.backgroundImage = `url('배경${bgIdx}.jpg')`;
-    }
-
-    function playBgm() { bgm.pause(); bgm.currentTime = 0; bgm.play().catch(() => {}); }
-    function firstStartGame() { document.getElementById("start-screen").style.display = "none"; playBgm(); runGame(); }
-    function restartGame() { document.getElementById("game-over").style.display = "none"; playBgm(); runGame(); }
-
-    function initPhysics() {
-        if (engine) {
-            Runner.stop(runner);
-            Engine.clear(engine);
-        }
-
-        engine = Engine.create({
-            gravity: { x: 0, y: 1.5 },
-            positionIterations: 10,
-            velocityIterations: 10
-        });
-
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        const wallOptions = { isStatic: true, restitution: 0, friction: 0.1 };
-
-        const ground = Bodies.rectangle(width / 2, height + 30, width * 2, 60, wallOptions);
-        const leftWall = Bodies.rectangle(-30, height / 2, 60, height * 2, wallOptions);
-        const rightWall = Bodies.rectangle(width + 30, height / 2, 60, height * 2, wallOptions);
-
-        Composite.add(engine.world, [ground, leftWall, rightWall]);
-
-        runner = Runner.create();
-        Runner.run(runner, engine);
-
-        Events.on(engine, 'collisionStart', (event) => {
-            if (!isGameRunning) return;
-            const pairs = event.pairs;
-
-            for (let pair of pairs) {
-                const { bodyA, bodyB } = pair;
-                if (bodyA.customLevel && bodyB.customLevel && bodyA.customLevel === bodyB.customLevel) {
-                    if (bodyA.isMerging || bodyB.isMerging) continue;
-                    
-                    bodyA.isMerging = true;
-                    bodyB.isMerging = true;
-
-                    const level = bodyA.customLevel;
-                    const midX = (bodyA.position.x + bodyB.position.x) / 2;
-                    const midY = (bodyA.position.y + bodyB.position.y) / 2;
-
-                    removeBall(bodyA);
-                    removeBall(bodyB);
-
-                    score += fruitTypes[level - 1].score * 2;
-                    scoreEl.innerText = score;
-
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestScoreEl.innerText = bestScore;
-                        localStorage.setItem('subak_best_score', bestScore);
-                    }
-
-                    if (level === 7) {
-                        triggerEventCutscene();
-                    } else {
-                        updateBackground();
-                    }
-
-                    if (level < 7) {
-                        setTimeout(() => {
-                            createBall(midX, midY, fruitTypes[level]);
-                        }, 10);
-                    }
-                }
-            }
-        });
-
-        Events.on(engine, 'afterUpdate', () => {
-            if (!isGameRunning) return;
-
-            let isOverflowing = false;
-            const bodies = Composite.allBodies(engine.world);
-
-            for (let body of bodies) {
-                if (!body.isStatic && ballMap.has(body.id)) {
-                    const el = ballMap.get(body.id);
-                    el.style.left = body.position.x + "px";
-                    el.style.top = body.position.y + "px";
-
-                    if (body.position.y - body.circleRadius < 35 && Math.abs(body.velocity.y) < 0.2) {
-                        isOverflowing = true;
-                    }
-                }
-            }
-
-            if (isOverflowing) {
-                gameOverTimer++;
-                if (gameOverTimer > 90) {
-                    isGameRunning = false;
-                    bgm.pause();
-                    document.getElementById("final-score").innerText = `최종 점수 : ${score}점`;
-                    
-                    const newRecordNotice = document.getElementById("new-record-notice");
-                    if (score >= bestScore && score > 0) {
-                        newRecordNotice.style.display = "block";
-                    } else {
-                        newRecordNotice.style.display = "none";
-                    }
-
-                    document.getElementById("game-over").style.display = "flex";
-                }
-            } else {
-                gameOverTimer = Math.max(0, gameOverTimer - 1);
-            }
-        });
-    }
-
-    function triggerEventCutscene() {
-        isEventActive = true;
-        
-        container.classList.add("flash-effect");
-
-        eventSound.currentTime = 0;
-        eventSound.play().catch(() => {});
-
-        container.style.backgroundImage = `url('event${eventIndex}.jpg')`;
-
-        eventIndex = (eventIndex % 3) + 1;
-
-        if (eventTimer) clearTimeout(eventTimer);
-
-        eventTimer = setTimeout(() => {
-            isEventActive = false;
-            container.classList.remove("flash-effect");
-            updateBackground();
-        }, 5000);
-    }
-
-    function runGame() {
-        score = 0;
-        scoreEl.innerText = "0";
-        isEventActive = false;
-        container.classList.remove("flash-effect");
-        if (eventTimer) clearTimeout(eventTimer);
-
-        updateBackground();
-        
-        document.querySelectorAll('.fruit-drop').forEach(el => el.remove());
-        ballMap.clear();
-
-        initPhysics();
-        isGameRunning = true;
-        
-        // 미리보기 없이 랜덤으로 바로 뽑아서 진행
-        currentDropLevel = getRandomDropLevel();
-
-        canDrop = true;
-        gameOverTimer = 0;
-    }
-
-    function getRandomDropLevel() {
-        const rand = Math.random();
-        if (rand < 0.35) return 0; else if (rand < 0.75) return 1; else return 2;
-    }
-
-    container.addEventListener("click", (e) => {
-        if (!isGameRunning || !canDrop) return;
-        const rect = container.getBoundingClientRect();
-        dropBall(e.clientX - rect.left);
-    });
-
-    container.addEventListener("touchend", (e) => {
-        if (!isGameRunning || !canDrop) return;
-        const rect = container.getBoundingClientRect();
-        dropBall(e.changedTouches[0].clientX - rect.left);
-        e.preventDefault();
-    }, {passive: false});
-
-    function dropBall(x) {
-        canDrop = false;
-        
-        const type = fruitTypes[currentDropLevel];
-        const clampX = Math.max(type.radius, Math.min(x, container.clientWidth - type.radius));
-        createBall(clampX, type.radius + 5, type);
-
-        // 던진 직후 다음 공을 바로 랜덤으로 새로 결정
-        currentDropLevel = getRandomDropLevel();
-
-        setTimeout(() => { canDrop = true; }, 800);
-    }
-
-    function createBall(x, y, type) {
-        const body = Bodies.circle(x, y, type.radius, {
-            restitution: 0.001, 
-            friction: 0.05,     
-            frictionAir: 0,     
-            slop: 0,             
-            density: 0.005
-        });
-
-        body.customLevel = type.level;
-
-        const el = document.createElement("div");
-        el.className = "fruit-drop";
-        el.style.width = (type.radius * 2) + "px";
-        el.style.height = (type.radius * 2) + "px";
-        el.style.backgroundImage = `url('${type.img}')`;
-        container.appendChild(el);
-
-        Composite.add(engine.world, body);
-        ballMap.set(body.id, el);
-    }
-
-    function removeBall(body) {
-        if (ballMap.has(body.id)) {
-            ballMap.get(body.id).remove();
-            ballMap.delete(body.id);
-        }
-        Composite.remove(engine.world, body);
-    }
-</script>
+    <!-- 외부 게임 로직 파일 연결 -->
+    <script src="game.js"></script>
 </body>
 </html>
